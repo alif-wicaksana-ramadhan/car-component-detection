@@ -44,6 +44,6 @@ def create_dataset_csv(dataset_dir: str, output_csv: str = "dataset.csv"):
 
 if __name__ == "__main__":
     dataset_dir = "./dataset"
-    output_csv = "dataset_multitask.csv"
+    output_csv = "./dataset/metadata.csv"
 
     create_dataset_csv(dataset_dir, output_csv)

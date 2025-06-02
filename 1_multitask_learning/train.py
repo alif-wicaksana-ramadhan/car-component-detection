@@ -49,11 +49,9 @@ if __name__ == "__main__":
         criterion,
         optimizer,
         scheduler,
-        num_epochs=2,
+        num_epochs=50,
         device=device,
     )
-
-    torch.save(model.state_dict(), "multitask_model.pth")
 
     print("Training complete!")
 

@@ -16,12 +16,16 @@ def train_val_model(
     scheduler: lr_scheduler = None,
     num_epochs: int = 20,
     device: torch.device = "cuda",
+    save_path: str = "best_model.pth",
 ):
     model = model.to(device)
     train_task_accuracies = []
     train_losses = []
     val_task_accuracies = []
     val_losses = []
+
+    # Initialize best validation loss to infinity
+    best_val_loss = float("inf")
 
     for epoch in range(num_epochs):
         # Training loop
@@ -77,11 +81,27 @@ def train_val_model(
         accuracies = [accuracy_score(val_true[:, i], val_preds[:, i]) for i in range(5)]
 
         val_task_accuracies.append(accuracies)
-        val_losses.append(val_loss / len(val_loader))
+        current_val_loss = val_loss / len(val_loader)
+        val_losses.append(current_val_loss)
+
+        # Save model if validation loss improved
+        if current_val_loss < best_val_loss:
+            best_val_loss = current_val_loss
+            torch.save(
+                {
+                    "epoch": epoch + 1,
+                    "model_state_dict": model.state_dict(),
+                    "optimizer_state_dict": optimizer.state_dict(),
+                    "val_loss": best_val_loss,
+                    "val_accuracies": accuracies,
+                },
+                save_path,
+            )
+            print(f"✓ New best model saved! Val Loss: {best_val_loss:.4f}")
 
         print(f"\nEpoch {epoch + 1}/{num_epochs}")
         print(f"Train Loss: {train_loss / len(train_loader):.4f}")
-        print(f"Val Loss: {val_loss / len(val_loader):.4f}")
+        print(f"Val Loss: {current_val_loss:.4f} (Best: {best_val_loss:.4f})")
         print(
             f"Val Accuracies: {dict(zip(['rear_right', 'rear_left', 'front_right', 'front_left', 'hood'], accuracies))}"
         )
@@ -94,6 +114,7 @@ def train_val_model(
         "train_losses": train_losses,
         "val_task_accuracies": val_task_accuracies,
         "val_losses": val_losses,
+        "best_val_loss": best_val_loss,
     }
 
 

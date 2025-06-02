@@ -29,7 +29,7 @@ def train_val_model(
         train_pbar = tqdm(
             train_loader, desc=f"Epoch {epoch + 1}/{num_epochs} [Train]", leave=False
         )
-        for batch in enumerate(train_pbar):
+        for batch in train_pbar:
             input_ids = batch["input_ids"].to(device)
             pixel_values = batch["pixel_values"].to(device)
             attention_mask = batch["attention_mask"].to(device)

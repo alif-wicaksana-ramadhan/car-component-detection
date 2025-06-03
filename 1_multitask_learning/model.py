@@ -5,35 +5,6 @@ from torch import Tensor
 from typing import List
 
 
-class DepthwiseSeparableConv(nn.Module):
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: int = 3,
-        stride: int = 1,
-        padding: int = 1,
-    ):
-        super().__init__()
-        self.depthwise = nn.Conv2d(
-            in_channels,
-            in_channels,
-            kernel_size,
-            stride,
-            padding,
-            groups=in_channels,
-            bias=False,
-        )
-        self.pointwise = nn.Conv2d(in_channels, out_channels, 1, bias=False)
-        self.bn = nn.BatchNorm2d(out_channels)
-
-    def forward(self, x: Tensor) -> Tensor:
-        x = self.depthwise(x)
-        x = self.pointwise(x)
-        x = self.bn(x)
-        return F.relu6(x, inplace=True)
-
-
 class InvertedResidual(nn.Module):
     def __init__(
         self,

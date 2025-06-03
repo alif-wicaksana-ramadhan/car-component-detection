@@ -132,7 +132,7 @@ def test_model(model: Module, test_loader: DataLoader, device: torch.device = "c
             test_preds.extend(preds)
             test_true.extend(labels.cpu().numpy())
             acc = accuracy_score(labels.cpu().numpy(), preds)
-            test_pbar.set_postfix({"loss": f"{acc:.4f}"})
+            test_pbar.set_postfix({"acc": f"{acc:.4f}"})
 
     test_preds = np.array(test_preds)
     test_true = np.array(test_true)

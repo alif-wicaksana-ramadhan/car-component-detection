@@ -287,7 +287,7 @@ Response: (Example)
 
 ## 🎥 Demo Video
 
-The demonstration video showcases:
+The [demonstration video](https://youtu.be/a8Jkdcwm5Ow) showcases :
 
 - Real-time component detection across different varous camera angles
 - Immediate response to door/hood interactions

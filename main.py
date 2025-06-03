@@ -49,7 +49,6 @@ def process_frame_prediction(frame_bytes: bytes):
     try:
         # Convert JPEG bytes to PIL Image
         image = Image.open(io.BytesIO(frame_bytes))
-        image.save("frame.jpg")
 
         # Convert to RGB if not already
         if image.mode != "RGB":

@@ -1,3 +1,12 @@
 opencv-python==4.11.0
 pyautogui==0.9.54
 pandas==2.2.3
+torch==2.7.0+cu126
+torchaudio==2.7.0+cu126
+torchvision==0.22.0+cu126
+matplotlib==3.10.3
+tqdm==4.67.1
+scikit-learn==1.6.1
+haystack-ai==2.14.1
+python-dotenv==1.1.0
+transformers==4.52.4

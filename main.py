@@ -118,7 +118,6 @@ def process_frame_prediction(frame_bytes: bytes):
 
         gc.collect()
 
-        # Clear GPU cache
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -202,7 +201,6 @@ def generate_image_caption(image_data: bytes):
 
         gc.collect()
 
-        # Clear GPU cache
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
@@ -300,7 +298,6 @@ def process_grounding_request(image_data: bytes, instruction: str):
 
         gc.collect()
 
-        # Clear GPU cache
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 

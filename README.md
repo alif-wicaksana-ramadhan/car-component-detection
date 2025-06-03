@@ -190,13 +190,13 @@ _Tested on NVIDIA RTX 3050, Intel i7-12700H_
 
 ### Task 2: Image Description Generator Interface
 
-- **URL**: `http://localhost:3000/captioning`
+- **URL**: `http://localhost:3000/caption-image`
 - **Features**: "Capture and Describe" button for current 3D model analysis
 - **Output**: Natural language description of all component states
 
 ### Task 3: Visual Grounding Interface
 
-- **URL**: `http://localhost:3000/grounding`
+- **URL**: `http://localhost:3000/ground-objects`
 - **Features**: Text input for object queries with bounding box visualization
 - **Input**: Natural language queries (e.g., "locate the open doors")
 - **Output**: Image with highlighted bounding boxes/segmentation masks
@@ -295,12 +295,12 @@ The demonstration video showcases:
 
 ## 🧪 Evaluation Criteria Compliance
 
-| Criteria                          | Implementation                              | Score        |
-| --------------------------------- | ------------------------------------------- | ------------ |
-| **Model Architecture Efficiency** | Lightweight 12M param model, 23ms inference | ✅ Excellent |
-| **Model Accuracy**                | 96.3% component detection accuracy          | ✅ Excellent |
-| **Real-Time Integration**         | 30+ FPS WebSocket streaming                 | ✅ Excellent |
-| **Presentation & Reporting**      | Comprehensive docs + demo video             | ✅ Complete  |
+| Criteria                          | Implementation                                | Complete? |
+| --------------------------------- | --------------------------------------------- | --------- |
+| **Model Architecture Efficiency** | Lightweight 1.5M param model, 8.3ms inference | ✅        |
+| **Model Accuracy**                | 95.88% average detection accuracy             | ✅        |
+| **Real-Time Integration**         | 30+ FPS WebSocket streaming                   | ✅        |
+| **Presentation & Reporting**      | Comprehensive docs + demo video               | ✅        |
 
 ## 📋 Deliverables Checklist
 

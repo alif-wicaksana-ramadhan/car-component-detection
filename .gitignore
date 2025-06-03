@@ -4,3 +4,5 @@ checkpoints/
 *.avi
 *.pth
 .env
+*.npy
+*.db

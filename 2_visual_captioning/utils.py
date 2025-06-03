@@ -49,9 +49,7 @@ def train_val_model(
             optimizer.step()
             optimizer.zero_grad()
 
-            train_pbar.set_postfix(
-                {"loss": f"{(train_loss / (len(train_pbar) + 1)):.4f}"}
-            )
+            train_pbar.set_postfix({"loss": f"{loss.item():.4f}"})
 
             del input_ids, pixel_values, attention_mask, outputs, loss
             if torch.cuda.is_available():
@@ -81,11 +79,9 @@ def train_val_model(
 
                 val_loss += outputs.loss.item()
 
-                del input_ids, pixel_values, attention_mask, outputs
+                val_pbar.set_postfix({"loss": f"{outputs.loss.item():.4f}"})
 
-                val_pbar.set_postfix(
-                    {"loss": f"{(val_loss / (len(val_pbar) + 1)):.4f}"}
-                )
+                del input_ids, pixel_values, attention_mask, outputs
 
         current_val_loss = val_loss / len(val_loader)
         val_losses.append(current_val_loss)

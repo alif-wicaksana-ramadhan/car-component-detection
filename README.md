@@ -237,60 +237,51 @@ _Tested on NVIDIA RTX 3050, Intel i7-12700H_
 #### Task 2: VLM Description
 
 ```http
-POST /api/v1/task2/describe
-Content-Type: multipart/form-data
+Request:
+curl -X 'POST' \
+  'http://localhost:8000/api/caption-image' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@image_sample.jpg;type=image/jpeg'
 
+Response: (Example)
 {
-    "screenshot": <file>,
-    "detail_level": "comprehensive" | "brief"
-}
-
-Response:
-{
-    "description": "The car's hood is open, along with the front right and rear left doors. The front left and rear right doors remain closed.",
-    "component_details": {
-        "front_left_door": "closed",
-        "front_right_door": "open",
-        "rear_left_door": "open",
-        "rear_right_door": "closed",
-        "hood": "open"
-    },
-    "confidence": 0.94,
-    "processing_time_ms": 456
+  "caption": "the car's front doors are both open, with the left and right doors ajar. the rear door on the left remains closed, while the right rear door is open. the hood is securely closed.",
+  "filename": "image_sample.jpg",
+  "content_type": "image/jpeg",
+  "timestamp": 1748973389.9251816
 }
 ```
 
 #### Task 3: Visual Grounding
 
 ```http
-POST /api/v1/task3/ground
-Content-Type: application/json
+Request:
+curl -X 'POST' \
+  'http://localhost:8000/api/ground-objects?instruction=car' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: multipart/form-data' \
+  -F 'file=@image_sample.jpg;type=image/jpeg'
 
+Response: (Example)
 {
-    "image_url": "data:image/jpeg;base64,/9j/4AAQ...",
-    "text_query": "locate the open doors",
-    "output_format": "bbox" | "mask",
-    "confidence_threshold": 0.5
-}
-
-Response:
-{
-    "detections": [
-        {
-            "object": "open door",
-            "bbox": [150, 200, 100, 180],
-            "confidence": 0.87,
-            "component": "front_right_door"
-        },
-        {
-            "object": "open door",
-            "bbox": [300, 220, 95, 175],
-            "confidence": 0.82,
-            "component": "rear_left_door"
-        }
-    ],
-    "annotated_image": "data:image/jpeg;base64,/9j/4AAQ...",
-    "processing_time_ms": 234
+  "instruction": "car",
+  "detections": [
+    {
+      "label": "car",
+      "score": 0.6037237644195557,
+      "box": [
+        168.40313720703125,
+        5.190643787384033,
+        727.6515502929688,
+        697.923095703125
+      ]
+    }
+  ],
+  "detection_count": 1,
+  "processed_image": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAIBAQEBAQIBAQECAgICAg...",
+  "original_filename": "image_sample.jpg",
+  "timestamp": 1748973507.1337228
 }
 ```
 

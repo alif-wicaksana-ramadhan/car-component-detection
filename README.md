@@ -142,3 +142,25 @@ This project implements an AI system capable of recognizing physical changes in 
    ```bash
    npm run dev
    ```
+
+## ⚡ Performance Metrics
+
+### Latencies
+
+| Task                        | Model Size  | Inference Time | CPU Usage | GPU Usage |
+| --------------------------- | ----------- | -------------- | --------- | --------- |
+| Task 1 (Multitask Learning) | 1.5M params | ~8.3ms         | 0.05 MB   | 0.00 MB   |
+| Task 2 (Visual Captioning)  | 129M params | ~342ms         | 0.52 MB   | 0.00 MB   |
+| Task 3 (Visual Grounding)   | 182M params | ~498ms-511ms   | 0.01 MB   | 0.00 MB   |
+
+### Multitask Learning Results
+
+| Multitask Classification | Accuracy |
+| ------------------------ | -------- |
+| Task 1 (Front Right)     | 95.1%    |
+| Task 2 (Front Left)      | 95.7%    |
+| Task 3 (Rear Right)      | 94.6%    |
+| Task 4 (Rear Left)       | 96.0%    |
+| Task 5 (Hood)            | 98.0%    |
+
+_Tested on NVIDIA RTX 3050, Intel i7-12700H_

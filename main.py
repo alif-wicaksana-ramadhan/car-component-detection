@@ -1,4 +1,11 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import (
+    FastAPI,
+    WebSocket,
+    WebSocketDisconnect,
+    File,
+    UploadFile,
+    HTTPException,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -13,7 +20,7 @@ import time
 import json
 import io
 
-from model_loader import load_multitask_model
+from model_loader import load_multitask_model, load_caption_model
 from connection_manager import ConnectionManager
 
 
@@ -22,7 +29,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global variables
-model = None
+multitask_model = None
+caption_model = None
+caption_processor = None
 executor = ThreadPoolExecutor(max_workers=1)
 
 transform = transforms.Compose(
@@ -38,10 +47,14 @@ transform = transforms.Compose(
 
 async def initialize_model():
     """Initialize the model on startup"""
-    global model
+    global multitask_model, caption_model, caption_processor
     loop = asyncio.get_event_loop()
-    model = await loop.run_in_executor(executor, load_multitask_model)
-    logger.info("Model loaded successfully")
+    multitask_model = await loop.run_in_executor(executor, load_multitask_model)
+    logger.info("Multitask model loaded successfully")
+    caption_model, caption_processor = await loop.run_in_executor(
+        executor, load_caption_model
+    )
+    logger.info("Caption model and processor loaded successfully")
 
 
 def process_frame_prediction(frame_bytes: bytes):
@@ -62,7 +75,7 @@ def process_frame_prediction(frame_bytes: bytes):
 
         # Run prediction
         with torch.no_grad():
-            predictions = model(tensor)
+            predictions = multitask_model(tensor)
 
         # Process predictions (adjust based on your model output)
         return {
@@ -78,7 +91,7 @@ def process_frame_prediction(frame_bytes: bytes):
 async def process_and_broadcast_prediction(frame_data: bytes):
     """Process frame and broadcast prediction result"""
     try:
-        if not model:
+        if not multitask_model:
             return
 
         loop = asyncio.get_event_loop()
@@ -112,6 +125,39 @@ async def process_and_broadcast_prediction(frame_data: bytes):
             await manager.broadcast_prediction(prediction_result)
     except Exception as e:
         logger.error(f"Error in prediction processing: {e}")
+
+
+def generate_image_caption(image_data: bytes):
+    """Generate caption for image (runs in thread)"""
+    try:
+        # Convert bytes to PIL Image
+        image = Image.open(io.BytesIO(image_data))
+
+        # Convert to RGB if not already
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        # Process image with processor
+        encoding = caption_processor(
+            image,
+            # padding="max_length",
+            # truncation=True,
+            # max_length=128,
+            return_tensors="pt",
+        )
+        # encoding = {k: v.squeeze() for k, v in encoding.items()}
+
+        # Generate caption using your model
+        with torch.no_grad():
+            outputs = caption_model.generate(
+                **encoding, max_length=128, num_beams=4, do_sample=True
+            )
+            caption = caption_processor.decode(outputs[0], skip_special_tokens=True)
+
+        return caption.replace(" ' ", "'")
+    except Exception as e:
+        logger.error(f"Caption generation error: {e}")
+        return None
 
 
 @asynccontextmanager
@@ -149,7 +195,7 @@ async def websocket_producer(websocket: WebSocket):
         while True:
             data = await websocket.receive_bytes()
             await manager.broadcast_to_consumers(
-                data, process_and_broadcast_prediction if model else None
+                data, process_and_broadcast_prediction if multitask_model else None
             )
 
     except WebSocketDisconnect:
@@ -253,6 +299,41 @@ async def get_latest_frame_tensor():
         return {"error": f"Failed to process frame: {str(e)}"}
 
 
+@app.post("/api/caption-image")
+async def caption_image(file: UploadFile = File(...)):
+    """Generate caption for uploaded image"""
+    if not caption_model or not caption_processor:
+        raise HTTPException(status_code=503, detail="Caption model not loaded")
+
+    # Validate file type
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+
+    try:
+        # Read image data
+        image_data = await file.read()
+
+        # Generate caption in thread to avoid blocking
+        loop = asyncio.get_event_loop()
+        caption = await loop.run_in_executor(
+            executor, generate_image_caption, image_data
+        )
+
+        if caption is None:
+            raise HTTPException(status_code=500, detail="Failed to generate caption")
+
+        return {
+            "caption": caption,
+            "filename": file.filename,
+            "content_type": file.content_type,
+            "timestamp": time.time(),
+        }
+
+    except Exception as e:
+        logger.error(f"Error processing image caption request: {e}")
+        raise HTTPException(status_code=500, detail=f"Processing error: {str(e)}")
+
+
 @app.post("/api/broadcast-prediction")
 async def broadcast_prediction(prediction: dict):
     """Broadcast prediction result to all connected listeners"""
@@ -267,10 +348,11 @@ async def get_prediction_status():
         "prediction_listeners": len(manager.prediction_listeners),
         "websocket_endpoint": "/ws/predictions",
         "broadcast_endpoint": "/api/broadcast-prediction",
-        "model_loaded": model is not None,
+        "model_loaded": multitask_model is not None,
     }
 
 
+# Update the status endpoint to include caption model status
 @app.get("/api/status")
 async def get_status():
     """Get server status"""
@@ -279,11 +361,17 @@ async def get_status():
         "producer_connected": manager.producer is not None,
         "consumer_count": len(manager.consumers),
         "prediction_listeners": len(manager.prediction_listeners),
-        "model_loaded": model is not None,
+        "model_loaded": multitask_model is not None,
+        "caption_model_loaded": caption_model is not None
+        and caption_processor is not None,
         "websocket_endpoints": {
             "producer": "/ws/producer",
             "consumer": "/ws/consumer",
             "predictions": "/ws/predictions",
+        },
+        "caption_endpoints": {
+            "upload": "/api/caption-image",
+            "base64": "/api/caption-base64",
         },
     }
 

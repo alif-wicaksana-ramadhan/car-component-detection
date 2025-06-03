@@ -1,4 +1,5 @@
 import torch
+import os
 from transformers import AutoProcessor, AutoModelForImageTextToText
 
 from multitask_learning.model import MultiTaskModel
@@ -14,12 +15,10 @@ def load_multitask_model():
     return model
 
 
-def load_visual_captioning_model(weights_path: str):
-    processor = AutoProcessor.from_pretrained(
-        "Salesforce/blip-image-captioning-base", use_fast=True
-    )
-    model = AutoModelForImageTextToText.from_pretrained(
-        "Salesforce/blip-image-captioning-base"
-    )
-    # model.load_state_dict(torch.load(weights_path))
+def load_caption_model():
+    model_name = "Salesforce/blip-image-captioning-base"
+    processor = AutoProcessor.from_pretrained(model_name, use_fast=True)
+    model = AutoModelForImageTextToText.from_pretrained(model_name)
+    state_dict = torch.load("./visual_captioning/best_model.pth")
+    model.load_state_dict(state_dict["model_state_dict"])
     return model, processor

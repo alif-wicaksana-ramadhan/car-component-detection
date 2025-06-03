@@ -20,6 +20,7 @@ import torch
 import time
 import json
 import io
+import gc
 
 from model_loader import load_multitask_model, load_caption_model, load_grounding_model
 from connection_manager import ConnectionManager
@@ -30,6 +31,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Global variables
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 multitask_model = None
 caption_model = None
 caption_processor = None
@@ -54,16 +56,27 @@ async def initialize_model():
     global caption_model, caption_processor
     global grounding_model, grounding_processor
     loop = asyncio.get_event_loop()
+
     multitask_model = await loop.run_in_executor(executor, load_multitask_model)
-    logger.info("Multitask model loaded successfully")
+    if multitask_model:
+        multitask_model = multitask_model.to(device=device)
+        multitask_model.eval()
+
     caption_model, caption_processor = await loop.run_in_executor(
         executor, load_caption_model
     )
-    logger.info("Caption model and processor loaded successfully")
+    if caption_model:
+        caption_model = caption_model.to(device=device)
+        caption_model.eval()
+
     grounding_model, grounding_processor = await loop.run_in_executor(
         executor, load_grounding_model
     )
-    logger.info("Grounding model and processor loaded successfully")
+    if grounding_model:
+        grounding_model = grounding_model.to(device=device)
+        grounding_model.eval()
+
+    logger.info(f"All models loaded on device: {device}")
 
 
 def process_frame_prediction(frame_bytes: bytes):
@@ -80,11 +93,12 @@ def process_frame_prediction(frame_bytes: bytes):
         tensor = transform(image)
 
         # Add batch dimension
-        tensor = tensor.unsqueeze(0)
+        tensor = tensor.unsqueeze(0).to(device)
 
         # Run prediction
         with torch.no_grad():
             predictions = multitask_model(tensor)
+            predictions = predictions.cpu()
 
         # Process predictions (adjust based on your model output)
         return {
@@ -95,6 +109,18 @@ def process_frame_prediction(frame_bytes: bytes):
     except Exception as e:
         logger.error(f"Prediction error: {e}")
         return None
+    finally:
+        # Explicitly delete GPU tensors
+        if tensor is not None:
+            del tensor
+        if predictions is not None:
+            del predictions
+
+        gc.collect()
+
+        # Clear GPU cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 async def process_and_broadcast_prediction(frame_data: bytes):
@@ -151,7 +177,10 @@ def generate_image_caption(image_data: bytes):
             image,
             return_tensors="pt",
         )
-        # encoding = {k: v.squeeze() for k, v in encoding.items()}
+        encoding = {
+            k: v.to(device) if isinstance(v, torch.Tensor) else v
+            for k, v in encoding.items()
+        }
 
         # Generate caption using your model
         with torch.no_grad():
@@ -164,6 +193,18 @@ def generate_image_caption(image_data: bytes):
     except Exception as e:
         logger.error(f"Caption generation error: {e}")
         return None
+    finally:
+        # Explicitly delete GPU tensors
+        if encoding is not None:
+            del encoding
+        if outputs is not None:
+            del outputs
+
+        gc.collect()
+
+        # Clear GPU cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 def process_grounding_request(image_data: bytes, instruction: str):
@@ -178,17 +219,21 @@ def process_grounding_request(image_data: bytes, instruction: str):
             image = image.convert("RGB")
 
         # Process image and instruction with processor
-        inputs = grounding_processor(image, instruction, return_tensors="pt")
+        encoding = grounding_processor(image, instruction, return_tensors="pt")
+        encoding = {
+            k: v.to(device) if isinstance(v, torch.Tensor) else v
+            for k, v in encoding.items()
+        }
 
         # Run grounding model
         with torch.no_grad():
-            outputs = grounding_model(**inputs)
+            outputs = grounding_model(**encoding)
 
         # Process outputs to get bounding boxes and labels
         # Adjust this based on your model's output format
         results = grounding_processor.post_process_grounded_object_detection(
             outputs,
-            inputs["input_ids"],
+            encoding["input_ids"],
             box_threshold=0.4,
             text_threshold=0.3,
             target_sizes=[image.size[::-1]],  # (height, width)
@@ -204,7 +249,7 @@ def process_grounding_request(image_data: bytes, instruction: str):
             font = ImageFont.load_default()
 
         boxes = results["boxes"]
-        labels = results["labels"]
+        labels = results["text_labels"]
         scores = results["scores"]
 
         detection_results = []
@@ -246,6 +291,18 @@ def process_grounding_request(image_data: bytes, instruction: str):
     except Exception as e:
         logger.error(f"Grounding processing error: {e}")
         return None
+    finally:
+        # Explicitly delete GPU tensors
+        if encoding is not None:
+            del encoding
+        if results is not None:
+            del results
+
+        gc.collect()
+
+        # Clear GPU cache
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 @asynccontextmanager
